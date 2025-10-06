@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react";
+import React, { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@/api";
@@ -43,7 +43,7 @@ const bookingFormSchema = z.object({
 
 
 
-export default function AppointmentPage() {
+function AppointmentBookingForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const serviceId = searchParams.get("serviceId");
@@ -527,5 +527,21 @@ export default function AppointmentPage() {
       </div>
       <Footer />
     </>
+  );
+}
+
+export default function AppointmentPage() {
+  return (
+    <Suspense fallback={
+      <>
+        <Header />
+        <div className="min-h-screen flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+        <Footer />
+      </>
+    }>
+      <AppointmentBookingForm />
+    </Suspense>
   );
 }
