@@ -66,7 +66,7 @@ export default function ServicesPricing({ businessSlug }: ServicesPricingProps) 
   };
 
   const handleBookService = (serviceId: string) => {
-    router.push(`/book?serviceId=${serviceId}`);
+    router.push(`/appointment?serviceId=${serviceId}`);
   };
 
   // Loading state

@@ -204,6 +204,12 @@ export type PublicApiType = {
       { id: Id<"appointments"> },
       any
     >;
+    getAppointmentDetails: FunctionReference<
+      "query",
+      "public",
+      { id: Id<"appointments"> },
+      any
+    >;
   };
   customer: {
     getForBusiness: FunctionReference<

@@ -6,28 +6,20 @@ import { api } from "../../../../api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import Header from "@/components/layout/header";
-import Footer from "@/components/layout/footer";
-import {
-  Calendar,
-  CheckCircle,
-  Mail,
-  Phone,
-  User,
-  Dog,
-} from "lucide-react";
+import { Calendar, CheckCircle, Mail, Phone, User, Dog } from "lucide-react";
 import { format } from "date-fns";
 import Link from "next/link";
+import {Loader2} from "lucide-react";
 
 export default function ConfirmationPage() {
   const params = useParams();
   const appointmentId = params.appointmentId as string;
 
-  // Get appointment details
-  // Note: You'll need to create this query in your Convex
-  // const appointment = useQuery(api.appointments.getById, { id: appointmentId });
+  // Get appointment details with customer and pet info
+  const appointment = useQuery(api.appointments.getAppointmentDetails, {
+    id: appointmentId as any,
+  });
 
-  // For now, using mock data structure
   const formatPrice = (priceInCents: number) =>
     `$${(priceInCents / 100).toFixed(2)}`;
 
@@ -42,29 +34,17 @@ export default function ConfirmationPage() {
     return `${displayHour}:${minutes} ${ampm}`;
   };
 
-  // Mock data - replace with real query
-  const appointment = {
-    _id: appointmentId,
-    title: "Full Grooming for Buddy",
-    scheduledDate: Date.now() + 86400000, // Tomorrow
-    startTime: "10:00",
-    endTime: "11:30",
-    status: "confirmed",
-    totalAmount: 8500, // $85
-    customer: {
-      name: "John Doe",
-      email: "john@example.com",
-      phone: "(555) 123-4567",
-    },
-    pet: {
-      name: "Buddy",
-      species: "dog",
-      breed: "Golden Retriever",
-      weight: 65,
-    },
-    services: [{ name: "Full Grooming", price: 8500 }],
-    specialInstructions: "Buddy is nervous around loud noises",
-  };
+  if (!appointment) {
+    return (
+      <>
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="w-10 h-10 animate-spin" />
+          </div>
+        </div>
+      </>
+    );
+  }
 
   const handleAddToCalendar = () => {
     // Create iCal format
@@ -96,7 +76,6 @@ END:VCALENDAR`;
 
   return (
     <>
-      <Header />
       <div className="min-h-screen py-12">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Success Message */}
@@ -164,17 +143,21 @@ END:VCALENDAR`;
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  {appointment.services.map((service: any, index: number) => (
-                    <div
-                      key={index}
-                      className="flex justify-between items-center py-2 border-b last:border-0"
-                    >
-                      <span className="font-medium">{service.name}</span>
-                      <span className="text-muted-foreground">
-                        {formatPrice(service.price)}
-                      </span>
-                    </div>
-                  ))}
+                  {appointment.serviceBreakdown.map(
+                    (service: any, index: number) => (
+                      <div
+                        key={index}
+                        className="flex justify-between items-center py-2 border-b last:border-0"
+                      >
+                        <span className="font-medium">
+                          {service.serviceName}
+                        </span>
+                        <span className="text-muted-foreground">
+                          {formatPrice(service.price)}
+                        </span>
+                      </div>
+                    )
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -278,7 +261,6 @@ END:VCALENDAR`;
           </div>
         </div>
       </div>
-      <Footer />
     </>
   );
 }

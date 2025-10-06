@@ -1,9 +1,9 @@
-"use client";
+"use client"
 
 import React, { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useQuery, useMutation } from "convex/react";
-import { api } from "../../../api";
+import { useQuery, useMutation, useAction } from "convex/react";
+import { api } from "@/api";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form"; 
 import * as z from "zod";
@@ -23,10 +23,12 @@ import { CalendarIcon, Clock, DollarSign, Dog, Loader2, User } from "lucide-reac
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
+type BookingFormValues = z.infer<typeof bookingFormSchema>;
+
 const bookingFormSchema = z.object({
   serviceId: z.string().min(1, "Please select a service"),
   customerName: z.string().min(2, "Name must be at least 2 characters"),
-  customerEmail: z.string().email("Invalid email address"),
+  customerEmail: z.email({ message: "Invalid email address" }),
   customerPhone: z.string().min(10, "Phone number must be at least 10 digits"),
   petName: z.string().min(1, "Pet name is required"),
   petSpecies: z.enum(["dog", "cat"]),
@@ -34,14 +36,14 @@ const bookingFormSchema = z.object({
   petAge: z.string().optional(),
   petWeight: z.string().optional(),
   petGender: z.enum(["male", "female"]),
-  appointmentDate: z.date({ required_error: "Please select a date" }),
+  appointmentDate: z.date({ message: "Please select a date" }),
   appointmentTime: z.string().min(1, "Please select a time"),
   specialInstructions: z.string().optional(),
 });
 
-type BookingFormValues = z.infer<typeof bookingFormSchema>;
 
-export default function BookAppointmentPage() {
+
+export default function AppointmentPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const serviceId = searchParams.get("serviceId");
@@ -59,6 +61,7 @@ export default function BookAppointmentPage() {
   const createCustomer = useMutation(api.customer.createCustomer);
   const createPet = useMutation(api.pets.createPet);
   const createAppointment = useMutation(api.appointments.createAppointment);
+  const createCheckout = useAction(api.stripe.createAppointmentCheckout);
 
   const form = useForm<BookingFormValues>({
     resolver: zodResolver(bookingFormSchema),
@@ -133,8 +136,9 @@ export default function BookAppointmentPage() {
       const scheduledDate = values.appointmentDate.getTime();
       const endTime = calculateEndTime(values.appointmentTime, selectedService.duration);
 
+      // Create appointment (pending payment)
       const appointmentId = await createAppointment({
-        userId: customerId as any,
+        customerId,
         title: `${selectedService.name} for ${values.petName}`,
         businessId: business._id,
         petId,
@@ -144,11 +148,22 @@ export default function BookAppointmentPage() {
         endTime,
         estimatedDuration: selectedService.duration,
         specialInstructions: values.specialInstructions || undefined,
-        autoConfirm: true,
+        autoConfirm: false, // Only confirm after payment
       });
 
-      toast.success("Appointment booked successfully!");
-      router.push(`/confirmation/${appointmentId}`);
+      // Create Stripe checkout session
+      const checkoutUrl = await createCheckout({
+        appointmentId,
+        customerEmail: values.customerEmail,
+        customerName: values.customerName,
+        successUrl: `${window.location.origin}/confirmation/${appointmentId}`,
+        cancelUrl: `${window.location.origin}/book?serviceId=${values.serviceId}`,
+      });
+
+      // Redirect to Stripe checkout
+      if (checkoutUrl) {
+        window.location.href = checkoutUrl;
+      }
     } catch (error) {
       console.error("Booking error:", error);
       toast.error("Failed to book appointment. Please try again.");
